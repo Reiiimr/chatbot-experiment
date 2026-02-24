@@ -53,12 +53,13 @@ app.post('/api/chat', async (req, res) => {
         res.json({ reply: botReply });
 
     } catch (error) {
-        console.error("Server Error:", error);
-        res.status(500).json({ error: "Server failed to process the AI reply." });
+        console.error("DETAILED ERROR:", error); // This will show up in your Render Logs
+        res.status(500).json({ error: "Could not reach Mistral: " + error.message });
     }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+
 });
