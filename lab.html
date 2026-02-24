@@ -6,13 +6,13 @@
     <title>Chatbot Experiment Lab</title>
     <style>
         body { background: #1a1a1a; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; }
-        /* The modal is always visible in the lab */
-        #chat-modal { width: 400px; height: 600px; background: #222; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #444; }
+        #chat-modal { width: 400px; height: 600px; background: #222; border-radius: 15px; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid #444; }
         #chat-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .input-area { padding: 15px; background: #2a2a2a; display: flex; gap: 10px; }
-        input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #111; color: white; }
+        .input-area { padding: 15px; background: #2a2a2a; display: flex; gap: 10px; border-bottom-left-radius: 15px; border-bottom-right-radius: 15px; }
+        input { flex: 1; padding: 10px; border-radius: 5px; border: 1px solid #444; background: #111; color: white; outline: none; }
         button { padding: 10px 15px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .clear-btn { background: #ef4444; font-size: 12px; margin-left: auto; display: block; margin: 5px 20px; border: none; color: white; cursor: pointer; border-radius: 3px; }
+        button:hover { background: #2563eb; }
+        .clear-btn { background: #ef4444; font-size: 12px; margin: 10px auto 0; padding: 5px 10px; border: none; color: white; cursor: pointer; border-radius: 3px; width: fit-content; }
     </style>
 </head>
 <body>
@@ -21,49 +21,30 @@
     <button class="clear-btn" onclick="clearChat()">Clear History</button>
     <div id="chat-window"></div>
     <form class="input-area" onsubmit="handleChat(event)">
-    <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off">
-    <button type="submit">Send</button>
-</form>
+        <input type="text" id="user-input" placeholder="Type a message..." autocomplete="off">
+        <button type="submit">Send</button>
+    </form>
 </div>
 
 <script>
-    // URL for your backend (Update this when you host the server online)
-    const API_URL = "https://chatbot-experiment-xaac.onrender.com;
+    // UPDATE THIS to your actual Render URL
+    const API_URL = "https://chatbot-experiment-xaac.onrender.com";
 
     async function handleChat(event) {
-    // 1. STOP THE REFRESH IMMEDIATELY
-    if (event) {
-        event.preventDefault();
-    }
+        // STOP the page from refreshing (?)
+        if (event) event.preventDefault();
 
-    const input = document.getElementById('user-input');
-    const chatWindow = document.getElementById('chat-window');
-    
-    // Safety check: if the chat window doesn't exist, stop here
-    if (!chatWindow) {
-        console.error("Could not find chat-window div!");
-        return;
-    }
-
-    const message = input.value.trim();
-    if (!message) return;
-
-    // 2. Clear input and add user bubble
-    input.value = '';
-    addMessage(message, 'user');
-
-    // ... rest of your fetch code ...
-}
-    async function handleChat(event) {
-        event.preventDefault();
         const input = document.getElementById('user-input');
         const chatWindow = document.getElementById('chat-window');
         const message = input.value.trim();
+
         if (!message) return;
 
+        // 1. Add User Bubble
         addMessage(message, 'user');
         input.value = '';
 
+        // 2. Add temporary "Typing" Bubble
         const tempId = "typing-" + Date.now();
         addMessage("Mistral is typing...", 'bot', tempId);
 
@@ -73,22 +54,49 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ message: message }) 
             });
+
+            if (!response.ok) throw new Error("Server Error");
+
             const result = await response.json();
             
+            // 3. Replace Typing Text with AI Response
             const bubble = document.getElementById(tempId);
-            if (result.reply) {
+            if (bubble && result.reply) {
                 bubble.innerText = result.reply;
+                bubble.style.fontStyle = "normal";
                 saveMessage(message, result.reply);
             }
         } catch (error) {
-            document.getElementById(tempId).innerText = "Error connecting to server.";
+            const bubble = document.getElementById(tempId);
+            if (bubble) bubble.innerText = "Error: " + error.message;
+            console.error("Chat Error:", error);
         }
     }
 
     function addMessage(text, role, id = null) {
         const chatWindow = document.getElementById('chat-window');
-        const style = role === 'user' ? "background:#3b82f6; align-self:flex-end;" : "background:#333; align-self:flex-start;";
-        chatWindow.innerHTML += `<div ${id ? `id="${id}"` : ''} style="${style} color:white; padding:10px; border-radius:10px; max-width: 80%;">${text}</div>`;
+        const bubble = document.createElement('div');
+        
+        if (id) bubble.id = id;
+
+        // Basic Styles
+        bubble.style.padding = "10px";
+        bubble.style.borderRadius = "10px";
+        bubble.style.color = "white";
+        bubble.style.maxWidth = "80%";
+        bubble.style.wordWrap = "break-word";
+        bubble.innerText = text;
+
+        if (role === 'user') {
+            bubble.style.background = "#3b82f6";
+            bubble.style.alignSelf = "flex-end";
+        } else {
+            bubble.style.background = "#333";
+            bubble.style.alignSelf = "flex-start";
+            if (id) bubble.style.fontStyle = "italic"; // For "typing..."
+        }
+
+        chatWindow.appendChild(bubble);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
@@ -100,21 +108,25 @@
 
     function loadHistory() {
         const history = JSON.parse(localStorage.getItem('lab_history') || '[]');
-        history.forEach(item => {
-            addMessage(item.user, 'user');
-            addMessage(item.bot, 'bot');
-        });
+        if (history.length === 0) {
+            addMessage("System: Connection Ready. Type a message to begin!", 'bot');
+        } else {
+            history.forEach(item => {
+                addMessage(item.user, 'user');
+                addMessage(item.bot, 'bot');
+            });
+        }
     }
 
     function clearChat() {
         localStorage.removeItem('lab_history');
         document.getElementById('chat-window').innerHTML = '';
+        addMessage("History cleared.", 'bot');
     }
 
+    // Load messages on startup
     window.onload = loadHistory;
 </script>
+
 </body>
-
 </html>
-
-
