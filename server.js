@@ -56,6 +56,13 @@ app.post('/api/chat', async (req, res) => {
         console.error("DETAILED ERROR:", error); // This will show up in your Render Logs
         res.status(500).json({ error: "Could not reach Mistral: " + error.message });
     }
+
+    // Find the catch block at the bottom of your /api/chat route and change it to this:
+} catch (error) {
+    console.log("--- MISTRAL ERROR LOG ---");
+    console.log(error); 
+    res.status(500).json({ error: "Mistral Error: " + error.message });
+}
 });
 
 const PORT = process.env.PORT || 3000;
@@ -63,3 +70,4 @@ app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 
 });
+
