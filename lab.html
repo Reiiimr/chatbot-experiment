@@ -31,6 +31,30 @@
     const API_URL = "https://chatbot-experiment-xaac.onrender.com;
 
     async function handleChat(event) {
+    // 1. STOP THE REFRESH IMMEDIATELY
+    if (event) {
+        event.preventDefault();
+    }
+
+    const input = document.getElementById('user-input');
+    const chatWindow = document.getElementById('chat-window');
+    
+    // Safety check: if the chat window doesn't exist, stop here
+    if (!chatWindow) {
+        console.error("Could not find chat-window div!");
+        return;
+    }
+
+    const message = input.value.trim();
+    if (!message) return;
+
+    // 2. Clear input and add user bubble
+    input.value = '';
+    addMessage(message, 'user');
+
+    // ... rest of your fetch code ...
+}
+    async function handleChat(event) {
         event.preventDefault();
         const input = document.getElementById('user-input');
         const chatWindow = document.getElementById('chat-window');
@@ -92,4 +116,5 @@
 </body>
 
 </html>
+
 
